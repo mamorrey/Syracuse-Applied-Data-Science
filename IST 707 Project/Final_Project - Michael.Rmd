@@ -1,0 +1,443 @@
+---
+title: "IST707_FinalProject"
+output: pdf_document
+---
+```{r}
+#importing in necessary libraries:
+library(dplyr)
+library(grid)
+#library(tm)
+library(arules)
+library(arulesViz)
+library(tidyverse)
+library(e1071)
+library(caret)
+```
+
+```{r}
+#loading the data set:
+heart <-read_csv("heart.csv")
+summary(heart)
+```
+```{r}
+#examinging structure:
+str(heart)
+```
+```{r}
+#checking for missing values:
+sum(is.na(heart))
+```
+```{r}
+#checking for duplicates:
+sum(duplicated(heart))
+```
+There is 1 duplicate record
+```{r}
+#removing duplicates:
+heart <-heart[!duplicated(heart),]
+```
+```{r}
+str(heart)
+```
+Removing missing values and duplicates, the data set is now 302 records with 14 observations
+
+Converting Variables from numeric to nominal
+```{r}
+heart$sex <-factor(heart$sex)
+heart$cp <-factor(heart$cp)
+heart$fbs <-factor(heart$fbs)
+heart$restecg <-factor(heart$restecg)
+heart$exang <-factor(heart$exang)
+heart$slope <-factor(heart$slope)
+heart$ca <-factor(heart$ca)
+heart$thal <-factor(heart$thal)
+heart$target <-factor(heart$target)
+```
+```{r}
+#checking:
+str(heart)
+```
+
+Recoding variables and discretizing variables: 
+```{r}
+#age:
+heart$age <-cut(heart$age, breaks= c(0,20,30,40,50,60,70,80,90),
+               labels=c("teens","twenties","thirties","forties","fifties","sixties","seventies","eighties"))
+#sex:
+heart$sex <-recode(heart$sex,"0"="Female","1"="Male")
+#cp:
+heart$cp <-recode(heart$cp, "0"="typical_angina","1"="atypical_angina","2"="non-anginal_pain","3"="asymptomatic")
+#trestbps:
+heart$trestbps <-cut(heart$trestbps, breaks = c(0,120,140,160,180,200),
+                     labels=c("optimal","prehypertension","high blood pressure stage 1","high blood pressure stage 2","hypertension crisis"))
+#chol:
+heart$chol <-cut(heart$chol, breaks= c(0,200,240,600),
+                 labels=c("Healthy Chol","Borderline","High Risk"))
+#fbs:
+heart$fbs <-recode(heart$fbs, "0"="Less than 120mg/dl fasting blood sugar", "1"="More than 120mg/dl fasting blood sugar")
+
+#restecg:
+heart$restecg <-recode(heart$restecg,"0"="Normal","1"="ST-T_wave_abnormality","2"="Probable/Definite_left_ventricular_hypertrophy")
+
+#thalach:
+heart$thalach <-cut(heart$thalach, breaks= c(0,100,150,250),
+                 labels=c("low","normal","high"))
+
+
+#exang:
+heart$exang <-recode(heart$exang, "0"="No","1"="Yes")
+
+#oldpeak:
+heart$oldpeak <-ifelse(heart$oldpeak==0,"Zero","More than Zero")
+
+#slope:
+heart$slope <-recode(heart$slope,"0"="upsloping","1"="flat","2"="downsloping")
+
+#ca:
+heart$ca <-factor(heart$ca)
+
+#thal
+heart$thal <-recode(heart$thal,"0"="absence","1"="normal","2"="fixed_defect","3"="reversable_defect")
+
+#target:
+heart$target <-recode(heart$target,"0"="low risk", "1"="high risk")
+
+#checking:
+str(heart)
+```
+
+Exploratory Visualizations:
+```{r}
+plot_age<-heart%>%
+  count(age)%>%
+  ggplot(aes(age, y=n))+
+  geom_bar(stat="identity",fill="cornflowerblue",col="white",bins=5)+
+  geom_text(aes(label=n),position=position_dodge(width=0.9),vjust=-0.25)+
+  ylab("count")+ xlab("age")
+plot_age
+
+plot_sex<-heart%>%
+  count(sex)%>%
+  ggplot(aes(sex, y=n))+
+  geom_bar(stat="identity",fill="cornflowerblue",col="white",bins=2)+
+  geom_text(aes(label=n),position=position_dodge(width=0.9),vjust=-0.25)+
+  ylab("count")+ xlab("sex")
+plot_sex
+
+plot_cp<-heart%>%
+  count(cp)%>%
+  ggplot(aes(cp, y=n))+
+  geom_bar(stat="identity",fill="cornflowerblue",col="white",bins=3)+
+  geom_text(aes(label=n),position=position_dodge(width=0.9),vjust=-0.25)+
+  ylab("count")+ xlab("cp")
+plot_cp
+
+plot_trestbps<-heart%>%
+  count(trestbps)%>%
+  ggplot(aes(trestbps, y=n))+
+  geom_bar(stat="identity",fill="cornflowerblue",col="white",bins=4)+
+  geom_text(aes(label=n),position=position_dodge(width=0.9),vjust=-0.25)+
+  ylab("count")+ xlab("trestbps")
+plot_trestbps
+
+plot_chol<-heart%>%
+  count(chol)%>%
+  ggplot(aes(chol, y=n))+
+  geom_bar(stat="identity",fill="cornflowerblue",col="white",bins=3)+
+  geom_text(aes(label=n),position=position_dodge(width=0.9),vjust=-0.25)+
+  ylab("count")+ xlab("chol")
+plot_chol
+
+plot_fbs<-heart%>%
+  count(fbs)%>%
+  ggplot(aes(fbs, y=n))+
+  geom_bar(stat="identity",fill="cornflowerblue",col="white",bins=2)+
+  geom_text(aes(label=n),position=position_dodge(width=0.9),vjust=-0.25)+
+  ylab("count")+ xlab("fbs")
+plot_fbs
+
+plot_restecg<-heart%>%
+  count(restecg)%>%
+  ggplot(aes(restecg, y=n))+
+  geom_bar(stat="identity",fill="cornflowerblue",col="white",bins=2)+
+  geom_text(aes(label=n),position=position_dodge(width=0.9),vjust=-0.25)+
+  ylab("count")+ xlab("restecb")
+plot_restecg
+```
+
+```{r}
+plot_thalach<-heart%>%
+  count(thalach)%>%
+  ggplot(aes(thalach, y=n))+
+  geom_bar(stat="identity",fill="cornflowerblue",col="white")+
+  #geom_text(aes(label=n),position=position_dodge(width=0.9),vjust=-0.25)+
+  ylab("count")+ xlab("thalach")
+plot_thalach
+
+plot_exang<-heart%>%
+  count(exang)%>%
+  ggplot(aes(exang, y=n))+
+  geom_bar(stat="identity",fill="cornflowerblue",col="white",bins=2)+
+  geom_text(aes(label=n),position=position_dodge(width=0.9),vjust=-0.25)+
+  ylab("count")+ xlab("exang")
+plot_exang
+
+plot_oldpeak<-heart%>%
+  count(oldpeak)%>%
+  ggplot(aes(oldpeak, y=n))+
+  geom_bar(stat="identity",fill="cornflowerblue",col="white",bins=2)+
+  geom_text(aes(label=n),position=position_dodge(width=0.9),vjust=-0.25)+
+  ylab("count")+ xlab("oldpeak")
+plot_oldpeak
+
+plot_slope<-heart%>%
+  count(slope)%>%
+  ggplot(aes(slope, y=n))+
+  geom_bar(stat="identity",fill="cornflowerblue",col="white",bins=3)+
+  geom_text(aes(label=n),position=position_dodge(width=0.9),vjust=-0.25)+
+  ylab("count")+ xlab("slope")
+plot_slope
+
+plot_ca<-heart%>%
+  count(ca)%>%
+  ggplot(aes(ca, y=n))+
+  geom_bar(stat="identity",fill="cornflowerblue",col="white",bins=2)+
+  geom_text(aes(label=n),position=position_dodge(width=0.9),vjust=-0.25)+
+  ylab("count")+ xlab("ca")
+plot_ca
+
+plot_thal<-heart%>%
+  count(thal)%>%
+  ggplot(aes(thal, y=n))+
+  geom_bar(stat="identity",fill="cornflowerblue",col="white",bins=4)+
+  geom_text(aes(label=n),position=position_dodge(width=0.9),vjust=-0.25)+
+  ylab("count")+ xlab("thal")
+plot_thal
+
+plot_target<-heart%>%
+  count(target)%>%
+  ggplot(aes(target, y=n))+
+  geom_bar(stat="identity",fill="cornflowerblue",col="white",bins=2)+
+  geom_text(aes(label=n),position=position_dodge(width=0.9),vjust=-0.25)+
+  ylab("count")+ xlab("target")
+plot_target
+
+
+```
+Correlation;
+```{r}
+library(corrplot)
+heart2 <-read_csv("heart.csv")
+cor_heart <-cor(heart2)
+round(cor_heart,2)
+par(mfrow=c(1,1))
+corrplot(cor_heart, method='number',tl.srt=45,number.cex=0.5,type='upper',order='hclust')
+heart2[,10]
+```
+
+plots with just significant attributes:
+```{r}
+#positively correlated
+cp_target <-table(heart$cp,heart$target)
+barplot(cp_target, beside=TRUE,col=c("cornflowerblue","orchid2","coral2","seagreen"),
+        legend.text=rownames(cp_target),args.legend=list(x="topright",cex=0.5),
+        main="Heart Attack Risk vs CP")
+
+thalach_target <-table(heart$thalach,heart$target)
+barplot(thalach_target, beside=TRUE,col=c("cornflowerblue","orchid2","coral2"),
+        legend.text=rownames(thalach_target),args.legend=list(x="topright",cex=0.5),
+         main="Heart Attack Risk vs Thalach")
+
+slope_target <-table(heart$slope,heart$target)
+barplot(slope_target, beside=TRUE,col=c("cornflowerblue","orchid2","coral2"),
+        legend.text=rownames(slope_target),args.legend=list(x="topright",cex=0.5),
+        main="Heart Attack Risk vs Slope")
+
+#negatively correlated
+exang_target <-table(heart$exang,heart$target)
+barplot(exang_target, beside=TRUE,col=c("cornflowerblue","orchid2"),
+        legend.text=rownames(exang_target),args.legend=list(x="topright",cex=0.5),
+        main="Heart Attack Risk vs Exang")
+
+oldpeak_target <-table(heart$oldpeak,heart$target)
+barplot(oldpeak_target, beside=TRUE,col=c("cornflowerblue","orchid2"),
+        legend.text=rownames(oldpeak_target),args.legend=list(x="topright",cex=0.5),
+        main="Heart Attack Risk vs Old Peak")
+
+ca_target <-table(heart$ca,heart$target)
+barplot(ca_target, beside=TRUE,col=c("cornflowerblue","orchid2","coral2","seagreen","dodgerblue"),
+        legend.text=rownames(ca_target),args.legend=list(x="topright",cex=0.5),
+        main="Heart Attack Risk vs CA")
+
+sex_target <-table(heart$sex,heart$target)
+barplot(sex_target, beside=TRUE,col=c("cornflowerblue","orchid2"),
+        legend.text=rownames(sex_target),args.legend=list(x="topright",cex=0.5),
+        main="Heart Attack Risk vs Sex")
+
+thal_target <-table(heart$thal,heart$target)
+barplot(thal_target, beside=TRUE,col=c("cornflowerblue","orchid2","coral2","seagreen"),
+        legend.text=rownames(thal_target),args.legend=list(x="topright",cex=0.5),
+        main="Heart Attack Risk vs Thal")
+```
+
+Modeling:
+
+## Association Rule Mining (ARM)
+```{r}
+str(heart)
+heart[,8]
+#oldpeak is char. Converting to factor.
+heart$oldpeak <- as.factor(heart$oldpeak)
+
+#Confirming
+str(heart$oldpeak)
+
+heartID <- as.character(heart[["id"]])
+heart$heartID <- NULL
+heartTransactions <- as(heart, "transactions")
+str(heartTransactions)
+#View item frequency plot
+itemFrequencyPlot(heartTransactions, topN=20, type="absolute")
+```
+
+**Item Frequency Plot for High Risk Patients**
+```{r}
+heartHighRisk <- heart %>%
+  filter(target=="high risk")
+
+HighRiskTransactions <- as(heartHighRisk, "transactions")
+#View item frequency plot
+itemFrequencyPlot(HighRiskTransactions, topN=20, type="absolute")
+```
+
+
+### Apriori Algorithm
+
+**Initial Attempt:**
+```{r}
+#supp = .005, conf = .8, minlen = 3
+heartRulesInitial <- apriori(heartTransactions, parameter=list(supp=.005, conf=.8, minlen=3),
+                      appearance=list(default="lhs", rhs="target=high risk"),
+                 control=list(verbose=F))
+
+heartRulesInitialByLift <- sort(heartRulesInitial, decreasing=TRUE, by="lift")
+options(digits=2)
+heartRulesInitialByLift
+inspect(heartRulesInitialByLift[1:10])
+
+```
+```{r}
+#Summary of initial attempt
+summary(heartRulesInitialByLift)
+```
+
+
+
+**Attempt 2:**
+```{r}
+#supp = .02, conf = .85, minlen = 3
+heartRules2 <- apriori(heartTransactions, parameter=list(supp=.02, conf=.85, minlen=3),
+                      appearance=list(default="lhs", rhs="target=high risk"),
+                 control=list(verbose=F))
+
+heartRules2LiftSort <- sort(heartRules2, decreasing=TRUE, by="lift")
+options(digits=2)
+heartRules2LiftSort
+inspect(heartRules2LiftSort[1:10])
+```
+```{r}
+#Summary of attempt 2
+summary(heartRules2LiftSort)
+```
+
+
+
+**Final Attempt:**
+```{r}
+heartRules3 <- apriori(heartTransactions, parameter=list(supp=.11, conf=.95, minlen=3),
+                      appearance=list(default="lhs", rhs="target=high risk"),
+                 control=list(verbose=F))
+
+summary(heartRules3)
+```
+
+**Inspect All Strong Rules**
+```{r}
+inspect(heartRules3)
+```
+
+**Strong Rules Sorted By Support**
+```{r}
+heartRules3SupSort <- sort(heartRules3, decreasing=TRUE, by="sup")
+options(digits=2)
+heartRules3SupSort
+inspect(heartRules3SupSort[1:10])
+```
+
+**Strong Rules Sorted By Confidence**
+```{r}
+heartRules3ConfSort <- sort(heartRules3, decreasing=TRUE, by="conf")
+options(digits=2)
+heartRules3ConfSort
+inspect(heartRules3ConfSort[1:10])
+```
+
+**Strong Rules Sorted By Lift**
+```{r}
+heartRules3LiftSort <- sort(heartRules3, decreasing=TRUE, by="lift")
+options(digits=2)
+heartRules3LiftSort
+inspect(heartRules3LiftSort[1:10])
+```
+
+**Plot Rules**
+```{r}
+plot(heartRules3LiftSort, method="graph")
+```
+
+# Classification Models
+# Naive Bayes
+```{r}
+trainPartition <- createDataPartition(heart$target, p=.7, list=FALSE)
+
+trainHeart <- heart[trainPartition, ]
+testHeart <- heart[-trainPartition, ]
+testHeart <- na.omit(testHeart)
+
+dim(trainHeart)
+dim(testHeart)
+
+table(trainHeart$target)
+table(testHeart$target)
+```
+
+## Initial Naive Bayes Attempt
+```{r}
+set.seed(125)
+nbTrain <- naiveBayes(target~., data=trainHeart)
+
+#See training model results including conditional probabilities
+nbTrain
+```
+
+
+```{r}
+nbPredict <- predict(nbTrain, testHeart, type="class")
+confusionMatrix(nbPredict, testHeart$target)
+```
+```{r}
+cbind(nbPred, testHeart)
+nbPred <- as.data.frame(nbPredict)
+```
+
+
+```{r}
+plot(nbPredict, ylab = "Density", main = "NaiveBayes Plot", col="darkred", ylim = c(0,60))
+actual<- table(testHeart$target)
+barplot(actual, col = "darkred", ylab = "Density", main = "Test Dataset Plot", ylim = c(0,60))
+
+
+```
+
+
+
