@@ -1,0 +1,11 @@
+TeamID,TeamName,Wins,Losses,
+1,That One Team,4,5,"INSERT INTO Team (TeamName, Wins, Losses) VALUES ('That One Team',4,5)"
+2,Ballers,7,2,"INSERT INTO Team (TeamName, Wins, Losses) VALUES ('Ballers',7,2)"
+3,Rudy Tomjanoviches,6,3,"INSERT INTO Team (TeamName, Wins, Losses) VALUES ('Rudy Tomjanoviches',6,3)"
+4,Floppers,3,6,"INSERT INTO Team (TeamName, Wins, Losses) VALUES ('Floppers',3,6)"
+5,Hand Check,4,5,"INSERT INTO Team (TeamName, Wins, Losses) VALUES ('Hand Check',4,5)"
+6,Mediocre Team,5,4,"INSERT INTO Team (TeamName, Wins, Losses) VALUES ('Mediocre Team',5,4)"
+7,Flamingos,4,5,"INSERT INTO Team (TeamName, Wins, Losses) VALUES ('Flamingos',4,5)"
+8,Old Dudes,2,7,"INSERT INTO Team (TeamName, Wins, Losses) VALUES ('Old Dudes',2,7)"
+9,Young Bucks,4,5,"INSERT INTO Team (TeamName, Wins, Losses) VALUES ('Young Bucks',4,5)"
+10,Buzzer Beaters,6,3,"INSERT INTO Team (TeamName, Wins, Losses) VALUES ('Buzzer Beaters',6,3)"
